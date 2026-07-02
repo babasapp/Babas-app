@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 class QuranService {
@@ -9,16 +10,32 @@ class QuranService {
   static const String _baseUrl = 'https://api.alquran.cloud/v1';
 
   Future<List<dynamic>> fetchSurahs() async {
-    final response = await _client.get(Uri.parse('$_baseUrl/surah'));
-    return _parseResponse<List<dynamic>>(
-      response,
-      (data) {
-        if (data is List) {
-          return data;
-        }
-        throw const FormatException('Unexpected response format for surahs');
-      },
-    );
+    try {
+      final response = await _client.get(Uri.parse('$_baseUrl/surah'));
+      return _parseResponse<List<dynamic>>(
+        response,
+        (data) {
+          if (data is List) {
+            return data;
+          }
+          throw const FormatException('Unexpected response format for surahs');
+        },
+      );
+    } catch (_) {
+      return _loadLocalSurahs();
+    }
+  }
+
+  Future<List<dynamic>> _loadLocalSurahs() async {
+    final jsonString = await rootBundle.loadString('assets/data/quran.json');
+    final decoded = jsonDecode(jsonString);
+    if (decoded is Map<String, dynamic> && decoded['code'] == 200) {
+      final data = decoded['data'];
+      if (data is List) {
+        return data;
+      }
+    }
+    throw const FormatException('Local Quran data format invalid');
   }
 
   Future<Map<String, dynamic>> fetchSurah(int surahNumber) async {

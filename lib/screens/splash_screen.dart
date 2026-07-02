@@ -5,22 +5,34 @@ import 'home_screen.dart';
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
-    @override
-      State<SplashScreen> createState() => _SplashScreenState();
-      }
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
 
-      class _SplashScreenState extends State<SplashScreen> {
-        @override
-          void initState() {
-              super.initState();
+class _SplashScreenState extends State<SplashScreen> {
+  Timer? _timer;
 
-                  Timer(const Duration(seconds: 3), () {
-                        Navigator.pushReplacement(
-                                context,
-                                        MaterialPageRoute(builder: (_) => const HomeScreen()),
-                                              );
-                                                  });
-                                                    }
+  @override
+  void initState() {
+    super.initState();
+
+    _timer = Timer(const Duration(seconds: 2), _navigateToHome);
+  }
+
+  void _navigateToHome() {
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
+    );
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
