@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../models/quran_model.dart';
+import '../screens/surah_detail_screen.dart';
 import '../services/quran_service.dart';
 
 class QuranScreen extends StatefulWidget {
@@ -11,7 +13,8 @@ class QuranScreen extends StatefulWidget {
 
 class _QuranScreenState extends State<QuranScreen> {
   late final QuranService _service;
-  late final Future<List<dynamic>> _surahsFuture;
+  late final Future<List<QuranSurahSummary>> _surahsFuture;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -33,7 +36,7 @@ class _QuranScreenState extends State<QuranScreen> {
         title: const Text('Al-Qur\'an'),
         backgroundColor: Colors.green,
       ),
-      body: FutureBuilder<List<dynamic>>(
+      body: FutureBuilder<List<QuranSurahSummary>>(
         future: _surahsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -53,25 +56,73 @@ class _QuranScreenState extends State<QuranScreen> {
             );
           }
 
-          final surahs = snapshot.data ?? const <dynamic>[];
+          final surahs = snapshot.data ?? const <QuranSurahSummary>[];
+          final filteredSurahs = _searchQuery.isEmpty
+              ? surahs
+              : surahs.where((surah) {
+                  final query = _searchQuery.toLowerCase();
+                  return surah.name.toLowerCase().contains(query) ||
+                      surah.englishName.toLowerCase().contains(query) ||
+                      surah.englishNameTranslation.toLowerCase().contains(query) ||
+                      surah.number.toString().contains(query);
+                }).toList();
 
-          return ListView.builder(
-            itemCount: surahs.length,
-            itemBuilder: (context, index) {
-              final surah = surahs[index];
-              final surahMap = surah is Map<String, dynamic>
-                  ? surah
-                  : <String, dynamic>{};
-              final name = surahMap['name'] ?? 'Surah ${index + 1}';
-              final englishName = surahMap['englishName'] ?? '';
-
-              return ListTile(
-                leading: CircleAvatar(child: Text('${index + 1}')),
-                title: Text(name.toString()),
-                subtitle: englishName.isEmpty ? null : Text(englishName.toString()),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              );
-            },
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: TextField(
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search),
+                    hintText: 'Cari nama surat, nomor, atau terjemahan...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: filteredSurahs.isEmpty
+                    ? const Center(child: Text('Tidak ada surat yang cocok.'))
+                    : ListView.separated(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: filteredSurahs.length,
+                        separatorBuilder: (context, index) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final surah = filteredSurahs[index];
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: Colors.green.shade100,
+                              child: Text(
+                                surah.number.toString(),
+                                style: const TextStyle(color: Colors.green),
+                              ),
+                            ),
+                            title: Text(surah.name),
+                            subtitle: Text(
+                              '${surah.englishName} • ${surah.englishNameTranslation}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => SurahDetailScreen(surah: surah),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
           );
         },
       ),
