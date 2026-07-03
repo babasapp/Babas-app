@@ -17,6 +17,7 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   late final Future<SurahDetail> _detailFuture;
   double _ayahFontSize = 18;
   bool _landscapeMode = false;
+  final Map<int, Future<String>> _tafsirFutures = {};
 
   @override
   void initState() {
@@ -285,6 +286,51 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
                 translation,
                 style: TextStyle(fontSize: _ayahFontSize - 2, color: Colors.black54, height: 1.5),
               ),
+              const SizedBox(height: 8),
+              ExpansionTile(
+                title: const Text('Tafsir', style: TextStyle(fontWeight: FontWeight.w600)),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: FutureBuilder<String>(
+                      future: _tafsirFutures.putIfAbsent(
+                        ayah.numberInSurah,
+                        () => _service.getTafsir(widget.surah.number, ayah.numberInSurah),
+                      ),
+                      builder: (context, snap) {
+                        if (snap.connectionState == ConnectionState.waiting) {
+                          return const SizedBox(
+                            height: 48,
+                            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          );
+                        }
+                        if (snap.hasError) {
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('Gagal memuat tafsir.', style: TextStyle(color: Colors.red.shade700)),
+                              TextButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _tafsirFutures[ayah.numberInSurah] = _service.getTafsir(widget.surah.number, ayah.numberInSurah);
+                                  });
+                                },
+                                child: const Text('Coba lagi'),
+                              ),
+                            ],
+                          );
+                        }
+
+                        final tafsir = snap.data ?? 'Tidak ada tafsir.';
+                        return Text(
+                          tafsir,
+                          style: TextStyle(fontSize: _ayahFontSize - 2, color: Colors.black87, height: 1.5),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -301,9 +347,18 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   }
 }
 
-class _QuranFeatureData {
-  final String title;
-  final IconData icon;
+class QuranService {
 
-  const _QuranFeatureData(this.title, this.icon);
+    Future<String> getTafsir(int surah, int ayah) async {
+        final url = Uri.parse(
+              "https://api.quran.gading.dev/surah/$surah/$ayah/tafsir"
+                  );
+
+                      final res = await http.get(url);
+                          final data = jsonDecode(res.body);
+
+                              return data['data']['tafsir']['id']['long'] ?? "-";
+                                }
+
+                                }
 }
