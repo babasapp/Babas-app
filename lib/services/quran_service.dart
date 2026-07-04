@@ -1,36 +1,71 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+
+import 'package:flutter/services.dart';
+
+import '../models/quran_model.dart';
 
 class QuranService {
+  Future<List<QuranSurahSummary>> fetchSurahs() async {
+    final raw = await rootBundle.loadString('assets/data/quran_complete.json');
+    final Map<String, dynamic> json = jsonDecode(raw);
+    final List data = json['data'] as List? ?? [];
+    return data.map((e) => QuranSurahSummary.fromJson(e as Map<String, dynamic>)).toList();
+  }
 
-  Future<dynamic> fetchSurahDetail(int surah) async {
-      final url = Uri.parse(
-            "https://api.quran.gading.dev/surah/$surah"
-                );
+  Future<SurahDetail> fetchSurahDetail(int number) async {
+    // Try to load per-surah file; if not present return empty lists with summary only
+    final summaryList = await fetchSurahs();
+    final summary = summaryList.firstWhere((s) => s.number == number, orElse: () => QuranSurahSummary(number: number, name: 'Surah $number', englishName: 'Surah $number', englishNameTranslation: '', revelationType: '', numberOfAyahs: 0));
 
-                    final res = await http.get(url);
+    final path = 'assets/data/surah_$number.json';
+    try {
+      final raw = await rootBundle.loadString(path);
+      final Map<String, dynamic> json = jsonDecode(raw);
+      final List ayahs = json['ayahs'] as List? ?? [];
 
-                        if (res.statusCode != 200) {
-                              throw Exception("Gagal load surah");
-                                  }
+      final arabic = ayahs
+          .asMap()
+          .entries
+          .map((entry) => QuranAyah(
+                number: entry.value['number'] ?? entry.key + 1,
+                numberInSurah: entry.value['number'] ?? entry.key + 1,
+                juz: entry.value['juz'] ?? 0,
+                text: entry.value['arab'] ?? '',
+              ))
+          .toList();
 
-                                      final data = jsonDecode(res.body);
-                                          return data['data'];
-                                            }
+      final translit = ayahs
+          .asMap()
+          .entries
+          .map((entry) => QuranAyah(
+                number: entry.value['number'] ?? entry.key + 1,
+                numberInSurah: entry.value['number'] ?? entry.key + 1,
+                juz: entry.value['juz'] ?? 0,
+                text: entry.value['latin'] ?? '',
+              ))
+          .toList();
 
-                                              Future<String> getTafsir(int surah, int ayah) async {
-                                                  final url = Uri.parse(
-                                                        "https://api.quran.gading.dev/surah/$surah/$ayah/tafsir"
-                                                            );
+      final translation = ayahs
+          .asMap()
+          .entries
+          .map((entry) => QuranAyah(
+                number: entry.value['number'] ?? entry.key + 1,
+                numberInSurah: entry.value['number'] ?? entry.key + 1,
+                juz: entry.value['juz'] ?? 0,
+                text: entry.value['translation'] ?? '',
+              ))
+          .toList();
 
-                                                                final res = await http.get(url);
+      return SurahDetail(
+        summary: summary,
+        arabicAyahs: arabic,
+        transliterationAyahs: translit,
+        translationAyahs: translation,
+      );
+    } catch (e) {
+      return SurahDetail(summary: summary, arabicAyahs: [], transliterationAyahs: [], translationAyahs: []);
+    }
+  }
 
-                                                                    if (res.statusCode != 200) {
-                                                                          return "-";
-                                                                              }
-
-                                                                                  final data = jsonDecode(res.body);
-
-                                                                                      return data['data']['tafsir']['id']['long'] ?? "-";
-                                                                                        }
-                                                                                        }
+  Future<void> dispose() async {}
+}

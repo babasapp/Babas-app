@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../models/quran_model.dart';
-import '../screens/surah_detail_screen.dart';
 import '../services/quran_service.dart';
+import 'surah_detail_screen.dart';
 
 class QuranScreen extends StatefulWidget {
   const QuranScreen({super.key});
@@ -12,14 +12,13 @@ class QuranScreen extends StatefulWidget {
 }
 
 class _QuranScreenState extends State<QuranScreen> {
-  late final QuranService _service;
+  final QuranService _service = QuranService();
   late final Future<List<QuranSurahSummary>> _surahsFuture;
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    _service = QuranService();
     _surahsFuture = _service.fetchSurahs();
   }
 
@@ -29,98 +28,78 @@ class _QuranScreenState extends State<QuranScreen> {
     super.dispose();
   }
 
+  void _openSurahDetail(int surahNumber) async {
+    final detail = await _service.fetchSurahDetail(surahNumber);
+    if (!mounted) return;
+    Navigator.push(context, MaterialPageRoute(builder: (_) => SurahDetailScreen(detail: detail)));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Al-Qur\'an'),
-        backgroundColor: Colors.green,
-      ),
+      appBar: AppBar(title: const Text("Al-Qur'an")),
       body: FutureBuilder<List<QuranSurahSummary>>(
         future: _surahsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-
           if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  'Gagal memuat daftar surah.\n${snapshot.error}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.red),
-                ),
-              ),
-            );
+            return Center(child: Text('Gagal memuat daftar surah. ${snapshot.error}'));
           }
 
-          final surahs = snapshot.data ?? const <QuranSurahSummary>[];
-          final filteredSurahs = _searchQuery.isEmpty
+          final surahs = snapshot.data ?? <QuranSurahSummary>[];
+          final filtered = _searchQuery.isEmpty
               ? surahs
-              : surahs.where((surah) {
-                  final query = _searchQuery.toLowerCase();
-                  return surah.name.toLowerCase().contains(query) ||
-                      surah.englishName.toLowerCase().contains(query) ||
-                      surah.englishNameTranslation.toLowerCase().contains(query) ||
-                      surah.number.toString().contains(query);
+              : surahs.where((s) {
+                  final q = _searchQuery.toLowerCase();
+                  return s.name.toLowerCase().contains(q) ||
+                      s.englishName.toLowerCase().contains(q) ||
+                      s.englishNameTranslation.toLowerCase().contains(q) ||
+                      s.number.toString().contains(q);
                 }).toList();
 
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.all(12.0),
                 child: TextField(
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                    });
-                  },
                   decoration: InputDecoration(
+                    hintText: 'Cari surat atau nomor...',
                     prefixIcon: const Icon(Icons.search),
-                    hintText: 'Cari nama surat, nomor, atau terjemahan...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
+                  onChanged: (v) => setState(() => _searchQuery = v),
                 ),
               ),
               Expanded(
-                child: filteredSurahs.isEmpty
-                    ? const Center(child: Text('Tidak ada surat yang cocok.'))
-                    : ListView.separated(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        itemCount: filteredSurahs.length,
-                        separatorBuilder: (context, index) => const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final surah = filteredSurahs[index];
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: Colors.green.shade100,
-                              child: Text(
-                                surah.number.toString(),
-                                style: const TextStyle(color: Colors.green),
-                              ),
-                            ),
-                            title: Text(surah.name),
-                            subtitle: Text(
-                              '${surah.englishName} • ${surah.englishNameTranslation}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => SurahDetailScreen(surah: surah),
-                                ),
-                              );
-                            },
-                          );
-                        },
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  itemCount: filtered.length,
+                  itemBuilder: (context, index) {
+                    final s = filtered[index];
+                    return Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      margin: const EdgeInsets.symmetric(vertical: 6),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        leading: CircleAvatar(radius: 20, child: Text(s.number.toString(), style: const TextStyle(fontSize: 14))),
+                        title: Text(s.englishName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(s.name),
+                            const SizedBox(height: 4),
+                            Text('${s.englishNameTranslation} • ${s.revelationType}', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                          ],
+                        ),
+                        trailing: const Icon(Icons.arrow_forward_ios),
+                        onTap: () => _openSurahDetail(s.number),
                       ),
+                    );
+                  },
+                ),
               ),
             ],
           );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'quran_screen.dart';
 
 class HomeScreen extends StatelessWidget {
         const HomeScreen({super.key});
@@ -42,15 +43,15 @@ class HomeScreen extends StatelessWidget {
                                         ),
                                         const SizedBox(height: 20),
 
-                                        menuTile("📖 Al-Qur'an"),
-                                        menuTile("🕌 Jadwal Sholat"),
-                                        menuTile("🤲 Doa & Dzikir"),
-                                        menuTile("🎧 Murottal"),
-                                        menuTile("📅 Kalender Islami"),
-                                        menuTile("🌤 Cuaca"),
-                                        menuTile("📚 Kitab Maulid"),
-                                        menuTile("⭐ Premium"),
-                                        menuTile("⚙️ Pengaturan"),
+                                        menuTile(context, "📖 Al-Qur'an"),
+                                        menuTile(context, "🕌 Jadwal Sholat"),
+                                        menuTile(context, "🤲 Doa & Dzikir"),
+                                        menuTile(context, "🎧 Murottal"),
+                                        menuTile(context, "📅 Kalender Islami"),
+                                        menuTile(context, "🌤 Cuaca"),
+                                        menuTile(context, "📚 Kitab Maulid"),
+                                        menuTile(context, "⭐ Premium"),
+                                        menuTile(context, "⚙️ Pengaturan"),
 
                                         const SizedBox(height: 24),
                                         Column(
@@ -66,7 +67,7 @@ class HomeScreen extends StatelessWidget {
         }
 }
 
-Widget menuTile(String title) {
+Widget menuTile(BuildContext context, String title) {
         return Card(
                 elevation: 2,
                 shape: RoundedRectangleBorder(
@@ -78,7 +79,11 @@ Widget menuTile(String title) {
                         title: Text(title),
                         trailing: const Icon(Icons.arrow_forward_ios),
                         onTap: () {
-                                // nanti isi navigasi
+                                if (title.contains("Al-Qur'an")) {
+                                        Navigator.push(context, MaterialPageRoute(builder: (_) => const QuranScreen()));
+                                        return;
+                                }
+                                // default: do nothing (preserve existing navigation behavior)
                         },
                 ),
         );
